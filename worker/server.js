@@ -6,22 +6,18 @@ const delay = miliseconds => new Promise(resolve => setTimeout(resolve, miliseco
 async function main() {
     while (true) {
         const isMaster = await redisAgent.seizeMasterRole(config.masterExpiration); // sliding expiration of master node record
-
         if (isMaster) {
-            console.log(`${config.nodeId}>`, "I am MASTER node");
-
-            // TODO: tidy up tasks that are left from broken workers
-
-            // TODO: generate new task
-
+            // generate new task
+            const task = "Random task ##########".replace(/#/g, _ => (Math.random()*16|0).toString(16));
+            console.log(`MASTER ${config.nodeId} generating item: ${task}`);
+            await redisAgent.enqueue(task);
+            await delay(config.iterationDelay * 1000);
         } else {
-            console.log(`${config.nodeId}>`, "I am slave node");
-            
-            // TODO: pick a task to process
-            
+            // pick a task to process
+            const value = await redisAgent.dequeue();
+            if (value)
+                console.log(`SLAVE ${config.nodeId} processing item: ${value}`);
         }
-
-        await delay(config.iterationDelay * 1000);
     }
 }
 

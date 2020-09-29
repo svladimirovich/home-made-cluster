@@ -5,5 +5,5 @@ module.exports = {
     // delay between each cycle of worker's infinite loop
     iterationDelay: parseInt(process.env.ITERATION_DELAY) || 1, // in seconds
     // sliding expiration of master node record
-    masterExpiration: parseInt(process.env.MASTER_EXPIRATION) || 3, // in seconds
+    masterExpiration: parseInt(process.env.MASTER_EXPIRATION) || 2, // in seconds
 }
