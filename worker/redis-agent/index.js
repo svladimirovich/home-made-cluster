@@ -2,20 +2,42 @@ const redis = require('redis');
 const util = require('util');
 
 const config = require('../config');
-const client = redis.createClient(`redis://${config.redisHost}`);
 
 const TASK_LIST = "tasklist";
 const MASTER_NODE_KEY = "master_node";
 
-const watch = util.promisify(client.watch).bind(client);
-const unwatch = util.promisify(client.unwatch).bind(client);
-const get = util.promisify(client.get).bind(client);
-const rpush = util.promisify(client.rpush).bind(client);
-const blpop = util.promisify(client.blpop).bind(client);
+let wrapper = null;
+
+async function connect(redisHost) {
+    if (wrapper == null)
+        return new Promise((resolve, reject) => {
+            const client = redis.createClient(`redis://${redisHost}`);
+            client.on('connect', _ => {
+                wrapper = {
+                    client,
+                    watch: util.promisify(client.watch).bind(client),
+                    unwatch: util.promisify(client.unwatch).bind(client),
+                    get: util.promisify(client.get).bind(client),
+                    rpush: util.promisify(client.rpush).bind(client),
+                    blpop: util.promisify(client.blpop).bind(client),
+                };
+                resolve(wrapper);
+            });
+            client.on('error', error => {
+                // store the error for everyone to see (especially at the step when watch() method is required)
+                if (wrapper && !wrapper.error) {
+                    wrapper.error = error;
+                }
+                reject(error);
+            });
+        });
+    else
+        return wrapper;
+}
 
 function setMaster(key, value, slidingExpirationSeconds) {
     return new Promise((resolve, reject) => {
-        client.multi()
+        wrapper.client.multi()
             .set(key, value)
             .expire(key, slidingExpirationSeconds)
             // all keys are unwatched when exec is called
@@ -36,24 +58,30 @@ function setMaster(key, value, slidingExpirationSeconds) {
 }
 
 async function seizeMasterRole(slidingExpirationSeconds) {
-    await watch(MASTER_NODE_KEY);
-    const masterNodeId = await get(MASTER_NODE_KEY);
+    if (wrapper === null) return Promise.reject("Error! Redis Agent is not connected to any instanse of Redis, use connect() method");
+    // this is for one case when watch method simply hangs without resolving on broken connection
+    // the only way to read the error is client.on('error') event listener
+    if (wrapper.error) throw wrapper.error;
+    await wrapper.watch(MASTER_NODE_KEY);
+    const masterNodeId = await wrapper.get(MASTER_NODE_KEY);
     let isMaster = false;
     if (masterNodeId === null || masterNodeId == config.nodeId) {
         // all keys are unwatched if multi object executes successfully within the setMaster() method
         isMaster = await setMaster(MASTER_NODE_KEY, config.nodeId, slidingExpirationSeconds);
     } else {
-        await unwatch();
+        await wrapper.unwatch();
     }
     return isMaster;
 }
 
 async function enqueue(value) {
-    await rpush(TASK_LIST, value);
+    if (wrapper === null) return Promise.reject("Error! Redis Agent is not connected to any instanse of Redis, use connect() method");
+    await wrapper.rpush(TASK_LIST, value);
 }
 
 async function dequeue() {
-    const result = await blpop(TASK_LIST, config.iterationDelay);
+    if (wrapper === null) return Promise.reject("Error! Redis Agent is not connected to any instanse of Redis, use connect() method");
+    const result = await wrapper.blpop(TASK_LIST, config.iterationDelay);
     if (result === null) {
         return null;
     } else {
@@ -61,8 +89,19 @@ async function dequeue() {
     }
 }
 
+function dispose() {
+    if (wrapper !== null) {
+        try {
+            wrapper.client && wrapper.client.quit();
+        } catch(error) {}
+        wrapper = null;
+    }
+}
+
 module.exports = {
+    connect,
     seizeMasterRole,
     enqueue,
     dequeue,
+    dispose,
 }
