@@ -4,4 +4,19 @@ services:
   redis:
     image: redis
     ports:
-        - 6379:6379    
+      - 6379:6379
+
+  home-made-cluster-worker:
+    image: svladimirovich/home-made-cluster-worker
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    deploy:
+      replicas: 5
+    environment:
+      - REDIS_HOST=redis
+      - ITERATION_DELAY=1
+      - MASTER_EXPIRATION=2
+    depends_on:
+      - redis
+      
