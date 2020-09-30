@@ -13,7 +13,7 @@ async function main() {
                 const task = "Random task ##########".replace(/#/g, _ => (Math.random()*16|0).toString(16));
                 console.log(`MASTER ${config.nodeId} generating item: ${task}`);
                 await redisAgent.enqueue(task);
-                await delay(config.iterationDelay * 1000);
+                await delay(config.iterationInterval * 1000);
             } else {
                 // pick a task to process
                 const value = await redisAgent.dequeue();
@@ -21,9 +21,9 @@ async function main() {
                     console.log(`SLAVE ${config.nodeId} processing item: ${value}`);
             }
         } catch(error) {
-            console.log("Error occured", error, "will retry in 3 seconds...");
+            console.log("Error occured", error, `will retry in ${config.retryInterval} seconds...`);
             redisAgent.dispose();
-            await delay(3000);
+            await delay(config.retryInterval * 1000);
         }
     }
 }

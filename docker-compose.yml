@@ -15,7 +15,8 @@ services:
       replicas: 5
     environment:
       - REDIS_HOST=redis
-      - ITERATION_DELAY=1
+      - ITERATION_INTERVAL=1
+      - RETRY_INTERVAL=3
       - MASTER_EXPIRATION=2
     depends_on:
       - redis

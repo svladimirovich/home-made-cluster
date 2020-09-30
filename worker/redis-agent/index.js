@@ -81,7 +81,7 @@ async function enqueue(value) {
 
 async function dequeue() {
     if (wrapper === null) return Promise.reject("Error! Redis Agent is not connected to any instanse of Redis, use connect() method");
-    const result = await wrapper.blpop(TASK_LIST, config.iterationDelay);
+    const result = await wrapper.blpop(TASK_LIST, config.iterationInterval);
     if (result === null) {
         return null;
     } else {
