@@ -92,7 +92,7 @@ async function dequeue() {
 async function registerNode(nodeId, role) {
     return new Promise((resolve, reject) => {
         wrapper.client.multi()
-            .set(nodeId, role)
+            .set(nodeId, `${role},nodejs`)
             .expire(nodeId, config.masterExpiration)
             .exec((error, result) => {
                 if (error)
