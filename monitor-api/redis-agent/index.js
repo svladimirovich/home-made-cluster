@@ -59,12 +59,18 @@ async function getCurrentNodes() {
             platform,
         });
     }
-
     return nodes;
+}
+
+function requestShutdown(nodeId) {
+    try {
+        wrapper && wrapper.client.publish("shutdown_request", nodeId);
+    } catch(error) {}
 }
 
 module.exports = {
     connect,
     dispose,
     getCurrentNodes,
+    requestShutdown,
 }

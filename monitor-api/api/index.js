@@ -3,8 +3,6 @@
 const config = require('../config');
 const redisAgent = require('../redis-agent');
 
-const nodes = [];
-
 module.exports = function(app, server) {
 
     app.get("/api/nodes", async (request, response) => {
@@ -20,17 +18,8 @@ module.exports = function(app, server) {
     });
 
     app.delete("/api/node/:id", (request, response) => {
-        // TODO: should send shutdown message to worker
-        
         const targetId = request.params.id;
-        const targetNode = nodes.find(node => node.nodeId == targetId);
-
-        if (targetNode) {
-            const index = nodes.indexOf(targetNode);
-            nodes.splice(index, 1);
-            response.status(202).end();
-        } else {
-            response.status(404).end();
-        }
+        redisAgent.requestShutdown(targetId);
+        response.status(202).end();
     });
 }
