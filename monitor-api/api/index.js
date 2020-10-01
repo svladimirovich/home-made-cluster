@@ -1,50 +1,27 @@
 'use strict';
 
 const config = require('../config');
+const redisAgent = require('../redis-agent');
 
-const nodes = [
-    {
-        nodeId: "worker-node-1",
-        role: "Slave",
-        platform: "nodejs",
-    }, {
-        nodeId: "worker-node-2",
-        role: "Slave",
-        platform: "nodejs",
-    }, {
-        nodeId: "worker-node-3",
-        role: "Slave",
-        platform: "nodejs",
-    }, {
-        nodeId: "worker-node-4",
-        role: "Slave",
-        platform: "nodejs",
-    }, {
-        nodeId: "worker-node-5",
-        role: "Master",
-        platform: "nodejs",
-    }, {
-        nodeId: "worker-node-6",
-        role: "Slave",
-        platform: "nodejs",
-    }, {
-        nodeId: "worker-node-7",
-        role: "Slave",
-        platform: "nodejs",
-    }, {
-        nodeId: "worker-node-8",
-        role: "Slave",
-        platform: "nodejs",
-    }
-];
+const nodes = [];
 
 module.exports = function(app, server) {
 
-    app.get("/api/nodes", (request, response) => {
-        response.json(nodes);
+    app.get("/api/nodes", async (request, response) => {
+        try {
+            await redisAgent.connect(config.redisHost);
+            const nodes = await redisAgent.getCurrentNodes();
+            response.json(nodes);
+        } catch(error) {
+            console.log("Error while communicating to Redis", error);
+            redisAgent.dispose();
+            response.status(500).end();
+        }
     });
 
     app.delete("/api/node/:id", (request, response) => {
+        // TODO: should send shutdown message to worker
+        
         const targetId = request.params.id;
         const targetNode = nodes.find(node => node.nodeId == targetId);
 
@@ -53,7 +30,7 @@ module.exports = function(app, server) {
             nodes.splice(index, 1);
             response.status(202).end();
         } else {
-            response.status(403).end();
+            response.status(404).end();
         }
     });
 }
