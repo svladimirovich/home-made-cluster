@@ -89,6 +89,20 @@ async function dequeue() {
     }
 }
 
+async function registerNode(nodeId, role) {
+    return new Promise((resolve, reject) => {
+        wrapper.client.multi()
+            .set(nodeId, role)
+            .expire(nodeId, config.masterExpiration)
+            .exec((error, result) => {
+                if (error)
+                    reject(error);
+                else
+                    resolve(result);    
+            });
+    });
+}
+
 function dispose() {
     if (wrapper !== null) {
         try {
@@ -104,4 +118,5 @@ module.exports = {
     enqueue,
     dequeue,
     dispose,
+    registerNode,
 }

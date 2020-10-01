@@ -20,6 +20,7 @@ async function main() {
                 if (value)
                     console.log(`SLAVE ${config.nodeId} processing item: ${value}`);
             }
+            await redisAgent.registerNode(config.nodeId, isMaster ? "Master" : "Slave");
         } catch(error) {
             console.log("Error occured", error, `will retry in ${config.retryInterval} seconds...`);
             redisAgent.dispose();
