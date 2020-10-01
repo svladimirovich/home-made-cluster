@@ -12,9 +12,12 @@ async function connect(redisHost) {
     if (wrapper == null)
         return new Promise((resolve, reject) => {
             const client = redis.createClient(`redis://${redisHost}`);
+            // Redis client subscribed to one or more channels should not issue commands
+            const subscriber = redis.createClient(`redis://${redisHost}`);
             client.on('connect', _ => {
                 wrapper = {
                     client,
+                    subscriber,
                     watch: util.promisify(client.watch).bind(client),
                     unwatch: util.promisify(client.unwatch).bind(client),
                     get: util.promisify(client.get).bind(client),
@@ -30,6 +33,15 @@ async function connect(redisHost) {
                 }
                 reject(error);
             });
+            subscriber.on('message', (channel, message) => {
+                if (channel == 'shutdown_request' && message == config.nodeId) {
+                    subscriber.unsubscribe('shutdown_request');
+                    subscriber.quit();
+                    client.quit();
+                    process.exit();
+                }
+            });
+            subscriber.subscribe('shutdown_request');
         });
     else
         return wrapper;
