@@ -7,8 +7,10 @@ Current solution does not guarantee 'at least once' task processing because ther
 ```
 > docker-compose up
 ```
+By default it should be available on http://localhost:8080
 
-Or you can each service separately by following the instructions below:
+Or you can run each service separately by following the instructions below:
+
 ### 1. To run Redis server:
 ```
 > docker run -p 6379:6379 redis
